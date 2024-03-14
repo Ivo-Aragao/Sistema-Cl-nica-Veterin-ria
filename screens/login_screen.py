@@ -2,7 +2,9 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
-  
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart  
 
 class PlaceholderEntry(ttk.Entry):
     def __init__(self, master=None, placeholder="", color='gray', show=None):
@@ -19,21 +21,21 @@ class PlaceholderEntry(ttk.Entry):
         self.put_placeholder()
 
     def on_entry_click(self, event):
-        if self.is_placeholder:
-            self.delete(0, "end")
-            self['foreground'] = self.default_fg_color
-            self.config(show=self.show)
-            self.is_placeholder = False
+        self.delete(0, "end")
+        self['foreground'] = self.default_fg_color
+        self.config(show=self.show)
+        self.is_placeholder = False
 
     def on_focus_out(self, event):
         if not self.get():
             self.put_placeholder()
 
     def put_placeholder(self):
-        self.delete(0, "end")
-        self.insert(0, self.placeholder)
-        self['foreground'] = self.placeholder_color
-        self.config(show='')
+        if not self.get():
+            self.delete(0, "end")
+            self.insert(0, self.placeholder)
+            self['foreground'] = self.placeholder_color
+            self.config(show='')
 
 class LoginScreen:
     def __init__(self, root, on_login_success, get_image_path_func):
@@ -96,6 +98,10 @@ class LoginScreen:
         login_button = ttk.Button(frame_right, text="Entrar", command=self.login)
         login_button.place(relx=0.5, rely=0.6, anchor='center')
 
+        # Botão "Esqueci a senha" (parte direita)
+        forgot_password_button = ttk.Button(frame_right, text="Esqueci a senha", command=self.show_forgot_password_popup)
+        forgot_password_button.place(relx=0.5, rely=0.65, anchor='center')
+
     def login(self):
         email = self.email_entry.get()
         password = self.password_entry.get()
@@ -111,6 +117,77 @@ class LoginScreen:
             self.on_login_success()
         else:
             messagebox.showerror("Erro", "Email ou senha incorretos")
+
+    def show_forgot_password_popup(self):
+        # Cria uma nova janela pop-up para a recuperação de senha
+        forgot_password_window = tk.Toplevel(self.root)
+        forgot_password_window.title("Recuperação de Senha")
+
+         # Defina o ícone da janela de recuperação de senha
+        icon_path = self.get_image_path("dog.ico")
+        forgot_password_window.iconbitmap(icon_path)
+
+        # Ajuste o tamanho da janela
+        forgot_password_window.geometry("400x200")
+
+
+        # Rótulo para explicar o propósito da janela pop-up
+        explanation_label = tk.Label(forgot_password_window, text="Insira seu e-mail para recuperar a senha:")
+        explanation_label.pack(pady=10)
+
+        # Dentro do método show_forgot_password_popup
+        recovery_email_entry = PlaceholderEntry(forgot_password_window, "E-mail de Recuperação", color='gray', show=None)
+        recovery_email_entry.pack(pady=10)
+        recovery_email_entry.config(width=40)
+
+        # Botão para enviar instruções de recuperação de senha
+        send_instructions_button = ttk.Button(forgot_password_window, text="Enviar Instruções", command=lambda: self.send_password_instructions(recovery_email_entry.get(), forgot_password_window))
+        send_instructions_button.pack(pady=10)
+
+    def send_password_instructions(self, recovery_email, window):
+        # Verifique se o e-mail fornecido é o e-mail desejado para recuperação
+        if recovery_email.lower() == "ivoaragaoadm@hotmail.com":
+            try:
+                # Configurações do servidor de e-mail (substitua pelos seus próprios dados)
+                smtp_server = "smtp.gmail.com"
+                smtp_port = 587
+                smtp_username = "francisco.ivo.bezerra05@aluno.ifce.edu.br"
+                smtp_password = "if.05675657347"
+
+                # Senha do sistema (substitua pela sua senha real)
+                system_password = "123"
+
+                # Cria a mensagem
+                message = MIMEMultipart()
+                message["From"] = smtp_username
+                message["To"] = recovery_email
+                message["Subject"] = "Recuperação de Senha"
+
+                # Corpo da mensagem
+                body = f"Sua senha do sistema é: {system_password}"
+                message.attach(MIMEText(body, "plain"))
+
+                # Inicia a conexão SMTP
+                with smtplib.SMTP(smtp_server, smtp_port) as server:
+                    server.starttls()
+                    server.login(smtp_username, smtp_password)
+
+                    # Envie o e-mail
+                    server.sendmail(smtp_username, recovery_email, message.as_string())
+
+                # Exibe uma mensagem de sucesso
+                messagebox.showinfo("Recuperação de Senha", f"Instruções enviadas para {recovery_email}")
+
+                # Fecha a janela de recuperação de senha
+                window.destroy()
+            except Exception as e:
+                # Se ocorrer um erro, exibe uma mensagem de erro
+                messagebox.showerror("Erro", f"Erro ao enviar e-mail: {str(e)}")
+        else:
+            # Se o e-mail não for o desejado, exibe uma mensagem de erro
+            messagebox.showerror("Erro", "Endereço de e-mail inválido para recuperação de senha.")
+
+
 
 # Exemplo de uso
 def on_login_success():

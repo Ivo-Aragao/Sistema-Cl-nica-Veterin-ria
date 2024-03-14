@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 from PIL import Image, ImageTk
 from screens.appointment_screen import AppointmentScreen
 from screens.view_appointments_screen import ViewAppointmentsScreen
@@ -89,10 +90,24 @@ class OptionsScreen:
         label_view_donations = tk.Label(self.root, text="Visualizar Doações", font=("Helvetica", 12), bg="white")
         label_view_donations.place(relx=0.575, rely=0.75, anchor='center')
 
+        # Botão Ajuda
+        help_button = ttk.Button(self.root, text="Ajuda?", command=self.show_help_dialog, width=20)
+        help_button.place(relx=0.95, rely=0.05, anchor='center')
+
          # Botão Sair
         exit_button = ttk.Button(self.root, text="Sair", command=self.root.destroy, width=20)
         exit_button.place(relx=0.5, rely=0.85, anchor='center')
 
+    def show_help_dialog(self):
+        help_text = (
+            "Ajuda:\n"
+            "Ícone 1: Agendar - Use este botão para agendar compromissos.\n"
+            "Ícone 2: Visualizar Agenda - Visualize seus compromissos agendados.\n"
+            "Ícone 3: Cadastrar Doação - Cadastre uma nova doação.\n"
+            "Ícone 4: Visualizar Doações - Visualize as doações cadastradas.\n"
+        )
+        messagebox.showinfo("Ajuda", help_text)
+        
     def open_appointment_screen(self):
         appointment_root = tk.Toplevel()
         app = AppointmentScreen(appointment_root)
@@ -108,6 +123,7 @@ class OptionsScreen:
     def open_view_donations_screen(self):
         view_donations_root = tk.Toplevel()
         app = ViewDonationsScreen(view_donations_root)
+        
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -4,6 +4,7 @@ import sqlite3
 from validate_docbr import CPF
 from tkinter import simpledialog
 from PIL import Image, ImageTk
+from datetime import datetime
 
 class AppointmentScreen:
     def __init__(self, root):
@@ -19,21 +20,19 @@ class AppointmentScreen:
         background_label = tk.Label(self.root, bg="white")
         background_label.place(relwidth=1, relheight=1)
 
-        # Carregar GIF usando Pillow
-        gif_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/animation.gif"
-        self.gif = Image.open(gif_path)
+        # Carregar imagem estática usando Pillow e redimensionar
+        image_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/C.jpeg"
+        original_image = Image.open(image_path)
+        resized_image = original_image.resize((370, 170), Image.ANTIALIAS)  # Ajuste o tamanho desejado
 
-        # Adicionar GIF no canto inferior direito
-        self.gif_label = tk.Label(self.root, bg="white")
-        self.gif_label.place(relx=0.2, rely=0.55)
+        self.static_image = ImageTk.PhotoImage(resized_image)
 
-        self.gif_frames = []
-        self.idx = 0
-        self.load_gif_frames()
-
-        self.animate_gif()
+        # Adicionar imagem redimensionada no canto inferior direito
+        self.image_label = tk.Label(self.root, image=self.static_image, bg="white")
+        self.image_label.place(relx=0.2, rely=0.55)
 
         self.create_widgets()
+
 
     def load_gif_frames(self):
         try:
@@ -186,6 +185,18 @@ class AppointmentScreen:
         # Formatação do CPF
         formatted_cpf = cpf_validator.mask(cpf)
 
+        # Converte a data e o horário para o formato datetime
+        try:
+            datetime.strptime(f"{date} {time}", "%d-%m-%Y %H:%M")
+        except ValueError:
+            messagebox.showerror("Erro", "Data ou horário inválido. Por favor, insira valores válidos.")
+            return
+
+        # Verifica se já existe um agendamento para o horário fornecido
+        if self.appointment_exists(date, time):
+            messagebox.showerror("Erro", "Já existe um agendamento para este horário. Escolha outro horário.")
+            return
+
         # Conecta ao banco de dados SQLite
         conn = sqlite3.connect('agendamentos.db')
         cursor = conn.cursor()
@@ -230,6 +241,22 @@ class AppointmentScreen:
         else:
             # Se não, fecha a janela
             self.root.destroy()
+            
+    def appointment_exists(self, date, time):
+        # Verifica se já existe um agendamento para o horário fornecido
+        conn = sqlite3.connect('agendamentos.db')
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT * FROM agendamentos
+            WHERE date = ? AND time = ?
+        ''', (date, time))
+
+        existing_appointment = cursor.fetchone()
+
+        conn.close()
+
+        return existing_appointment is not None
             
     def clear_fields(self):
         # Limpa os campos do formulário para um novo agendamento

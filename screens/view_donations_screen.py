@@ -2,7 +2,7 @@ import os
 import shutil
 import sqlite3
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -68,7 +68,6 @@ class ViewDonationsScreen:
                         conn.close()
 
                         self.refresh_list()  # Atualiza a lista após excluir
-                        messagebox.showinfo("Exclusão de Doação", "Doação excluída com sucesso.")
 
                     except sqlite3.Error as e:
                         messagebox.showerror("Erro no Banco de Dados", str(e))
@@ -139,6 +138,7 @@ class ViewDonationsScreen:
         backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.backup_database)
         backup_button.grid(row=3, column=3, pady=10)
 
+
         close_button = tk.Button(self.root, text="Fechar", command=self.root.destroy)
         close_button.grid(row=3, column=4, pady=10)
         
@@ -147,12 +147,14 @@ class ViewDonationsScreen:
         self.load_donations()
 
     def backup_database(self):
-        backup_path = "C:/Users/Backup"
-        try:
-            shutil.copy2('doacoes.db', backup_path)
-            messagebox.showinfo("Backup", "Backup do banco de dados realizado com sucesso!")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao fazer backup do banco de dados: {str(e)}")
+        backup_destination_folder = filedialog.askdirectory(title="Escolha a Pasta de Destino para o Backup")
+        if backup_destination_folder:
+            backup_path = os.path.join(backup_destination_folder, 'doacoes_backup.db')
+            try:
+                shutil.copy2('doacoes.db', backup_path)
+                messagebox.showinfo("Backup", "Backup do banco de dados realizado com sucesso!")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao fazer backup do banco de dados: {str(e)}")
 
     def filter_by_date(self):
         start_date = self.start_date_entry.get_date()
@@ -212,25 +214,31 @@ class ViewDonationsScreen:
             donations = cursor.fetchall()
             conn.close()
 
-            if donations:
-                c = canvas.Canvas("Relatorio_mensal_doacoes.pdf", pagesize=letter)
-                c.setFont("Helvetica", 12)
-                c.drawString(100, 750, "Relatório Mensal de Doações")
-                c.drawString(100, 730, f"Período: {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
-                c.drawString(100, 710, "------------------------------------------------------------")
+            report_destination_folder = filedialog.askdirectory(title="Escolha a Pasta de Destino para o Relatório")
+            if report_destination_folder:
+                report_path = os.path.join(report_destination_folder, 'Relatorio_mensal_doacoes.pdf')
+                try:
+                    c = canvas.Canvas(report_path, pagesize=letter)
+                    c.setFont("Helvetica", 12)
+                    c.drawString(100, 750, "Relatório Mensal de Doações")
+                    c.drawString(100, 730, f"Período: {start_date.strftime('%d/%m/%Y')} - {end_date.strftime('%d/%m/%Y')}")
+                    c.drawString(100, 710, "------------------------------------------------------------")
 
-                y = 680
-                for donation in donations:
-                    donation_info = f"Nome: {donation[0]}, Tipo: {donation[1]}, Descrição: {donation[2]}, Data: {donation[3]}"
-                    c.drawString(100, y, donation_info)
-                    y -= 20
+                    y = 680
+                    for donation in donations:
+                        donation_info = f"Nome: {donation[0]}, Tipo: {donation[1]}, Descrição: {donation[2]}, Data: {donation[3]}"
+                        c.drawString(100, y, donation_info)
+                        y -= 20
 
-                c.save()
+                    c.save()
 
-                messagebox.showinfo("Relatório Gerado", "O relatório mensal foi gerado com sucesso como Relatorio_mensal_doacoes.pdf")
+                    messagebox.showinfo("Relatório Gerado", f"O relatório mensal foi gerado com sucesso como {report_path}")
+
+                except sqlite3.Error as e:
+                    messagebox.showerror("Erro no Banco de Dados", str(e))
 
             else:
-                messagebox.showinfo("Relatório Vazio", "Não há doações no período selecionado.")
+                messagebox.showinfo("Operação Cancelada", "A geração do relatório foi cancelada pelo usuário.")
 
         except sqlite3.Error as e:
             messagebox.showerror("Erro no Banco de Dados", str(e))

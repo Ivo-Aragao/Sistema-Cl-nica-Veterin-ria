@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkcalendar import DateEntry
 import sqlite3
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog  # Adicione filedialog
 from reportlab.pdfgen import canvas  # Adicione esta linha
 import shutil
-from babel import numbers
 import os
+
 class ViewAppointmentsScreen:
     def __init__(self, root):
         self.root = root
@@ -58,10 +58,10 @@ class ViewAppointmentsScreen:
         close_button.grid(row=3, column=2)
 
         # Botão de ação para gerar PDF
-        pdf_button = tk.Button(self.root, text="Gerar PDF", command=self.generate_pdf)
+        pdf_button = tk.Button(self.root, text="Gerar PDF", command=self.choose_destination_and_generate_pdf)
         pdf_button.grid(row=3, column=3)
 
-        backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.backup_database)
+        backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.choose_backup_destination_and_backup)
         backup_button.grid(row=3, column=4)
 
     def search_appointments(self):
@@ -171,12 +171,25 @@ class ViewAppointmentsScreen:
             conn.close()
             self.search_appointments()
 
-    def backup_database(self):
-        # Escolha o local de backup (pode ser um diretório específico)
-        backup_path = "C:/Users/Backup"
+    def choose_backup_destination_and_backup(self):
+        # Abra uma caixa de diálogo para escolher a pasta de destino
+        backup_destination_folder = filedialog.askdirectory()
+
+        # Se o usuário cancelar a escolha da pasta, retorne
+        if not backup_destination_folder:
+            return
+
+        # Chame a função para backup do banco de dados passando a pasta de destino
+        self.backup_database(backup_destination_folder)
+
+    def backup_database(self, backup_destination_folder):
+        # Utilize a pasta de destino escolhida pelo usuário
+        backup_filename = os.path.join(backup_destination_folder, "agendamentos_backup.db")
+
+        # Restante do código para fazer o backup do banco de dados
         try:
             # Copie o arquivo do banco de dados para o local de backup
-            shutil.copy2('agendamentos.db', backup_path)
+            shutil.copy2('agendamentos.db', backup_filename)
             messagebox.showinfo("Backup", "Backup do banco de dados realizado com sucesso!")
         except Exception as e:
             messagebox.showerror("Erro", f"Erro ao fazer backup do banco de dados: {str(e)}")
@@ -184,7 +197,18 @@ class ViewAppointmentsScreen:
     def on_item_double_click(self, event):
         self.edit_appointment()
 
-    def generate_pdf(self):
+    def choose_destination_and_generate_pdf(self):
+        # Abra uma caixa de diálogo para escolher a pasta de destino
+        destination_folder = filedialog.askdirectory()
+
+        # Se o usuário cancelar a escolha da pasta, retorne
+        if not destination_folder:
+            return
+
+        # Chame a função para gerar o PDF passando a pasta de destino
+        self.generate_pdf(destination_folder)    
+
+    def generate_pdf(self, destination_folder):
         date = self.date_entry.get()
         conn = sqlite3.connect('agendamentos.db')
         cursor = conn.cursor()
@@ -199,7 +223,10 @@ class ViewAppointmentsScreen:
         # Formate a data para o nome do arquivo com barras
         formatted_date = date.replace('-', '_')
 
-        pdf_filename = f"agendamentos_{formatted_date}.pdf"
+         # Utilize a pasta de destino escolhida pelo usuário
+        pdf_filename = os.path.join(destination_folder, f"agendamentos_{formatted_date}.pdf")
+
+        # Restante do código para gerar o PDF
         pdf = canvas.Canvas(pdf_filename)
 
         # Configuração do cabeçalho
