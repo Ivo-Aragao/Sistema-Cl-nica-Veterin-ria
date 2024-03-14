@@ -44,6 +44,3 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir problemas (issue
 
 - [ivo aragao](https://github.com/Ivo-Aragao)
 
-## Licença
-
-Este projeto está licenciado sob a [Licença MIT](LICENSE).
