@@ -10,7 +10,7 @@ class DonationRegistrationScreen:
         self.root.geometry("600x300")
 
         # Defina o ícone da janela
-        icon_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/dog.ico"
+        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         # Adicionar fundo branco
@@ -18,7 +18,7 @@ class DonationRegistrationScreen:
         background_label.place(relwidth=1, relheight=1)
 
         # Carregar GIF usando Pillow
-        gif_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/animation2.gif"
+        gif_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/animation2.gif"
         self.gif = Image.open(gif_path)
 
         # Adicionar GIF no canto inferior direito

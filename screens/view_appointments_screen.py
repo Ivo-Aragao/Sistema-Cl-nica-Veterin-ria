@@ -1,51 +1,99 @@
 import tkinter as tk
-from tkcalendar import DateEntry
+from tkinter import ttk, messagebox, filedialog
 import sqlite3
-from tkinter import ttk, messagebox, filedialog  # Adicione filedialog
-from reportlab.pdfgen import canvas  # Adicione esta linha
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 import shutil
 import os
+
+class EditAppointmentDialog:
+    def __init__(self, parent, appointment_details):
+        self.parent = parent
+        self.appointment_details = appointment_details
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Editar Agendamento")
+        self.dialog.grab_set()
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Labels e campos de entrada para os detalhes do agendamento
+        labels = ["ID", "Tutor", "CPF", "Pet", "Espécie", "Raça", "Gênero", "Horário", "Data"]
+        self.entries = {}
+
+        for i, label in enumerate(labels):
+            tk.Label(self.dialog, text=label + ":").grid(row=i, column=0, padx=5, pady=5)
+            entry = tk.Entry(self.dialog, width=30)
+            entry.grid(row=i, column=1, padx=5, pady=5)
+            entry.insert(0, self.appointment_details[i])
+            self.entries[label] = entry
+
+        # Botão de salvar alterações
+        save_button = tk.Button(self.dialog, text="Salvar", command=self.save_changes)
+        save_button.grid(row=len(labels), columnspan=2, pady=10)
+
+    def save_changes(self):
+        # Obtém os novos detalhes do agendamento dos campos de entrada
+        new_details = [self.entries[label].get() for label in self.entries]
+
+        # Atualiza os detalhes do agendamento
+        self.update_appointment_details(new_details)
+
+        # Fecha a janela de diálogo
+        self.dialog.destroy()
+
+    def update_appointment_details(self, new_details):
+        # Conecta-se ao banco de dados SQLite
+        conn = sqlite3.connect('clinic_database.db')
+        cursor = conn.cursor()
+
+        try:
+            # Executa a consulta SQL para atualizar os detalhes do agendamento
+            cursor.execute("UPDATE agendamentos SET tutor_name=?, cpf=?, pet_name=?, species=?, breed=?, gender=?, time=?, appointment_date=? WHERE id=?", (*new_details[1:], self.appointment_details[0]))
+            conn.commit()
+            messagebox.showinfo("Editar Agendamento", "Agendamento editado com sucesso.")
+            # Atualize a exibição dos agendamentos na tela principal, se necessário
+            # Por exemplo, você pode chamar self.populate_treeview() da tela principal aqui
+        except Exception as e:
+            conn.rollback()
+            messagebox.showerror("Erro", f"Erro ao editar o agendamento: {e}")
+        finally:
+            conn.close()
+
 
 class ViewAppointmentsScreen:
     def __init__(self, root):
         self.root = root
-        self.root.title("Visualizar Agendamentos por Data")
+        self.root.title("Visualizar Agendamentos por Tutor")
         self.root.geometry("800x400")
 
-        # Configurar o layout para que as colunas e linhas se expandam
-        for i in range(6):
-            self.root.columnconfigure(i, weight=1)
-        self.root.rowconfigure(2, weight=1)
-        
         # Defina o ícone da janela
-        icon_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/dog.ico"  # Substitua pelo caminho real do ícone
+        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         self.create_widgets()
 
     def create_widgets(self):
         # Título
-        title_label = tk.Label(self.root, text="Visualizar Agendamentos por Data", font=('Arial', 16, 'bold'))
+        title_label = tk.Label(self.root, text="Visualizar Agendamentos por Tutor", font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, columnspan=6, pady=20)
 
-        # Data de consulta
-        date_label = tk.Label(self.root, text="Data (DD-MM-YYYY):")
+        # Combobox para seleção de datas
+        date_label = tk.Label(self.root, text="Selecione a data:")
         date_label.grid(row=1, column=0)
-
-        # Use o DateEntry para a entrada de data
-        self.date_entry = DateEntry(self.root, date_pattern="dd-mm-yyyy")
-        self.date_entry.grid(row=1, column=1)
-        search_button = tk.Button(self.root, text="Buscar", command=self.search_appointments)
-        search_button.grid(row=1, column=2)
+        self.date_combobox = ttk.Combobox(self.root, state="readonly", width=12)
+        self.date_combobox.grid(row=1, column=1)
+        self.date_combobox.bind("<<ComboboxSelected>>", self.populate_treeview)
 
         # Tabela de agendamentos
-        columns = ("ID", "Tutor", "CPF", "Pet", "Espécie", "Raça", "Gênero", "Horário")
+        columns = ("ID", "Tutor", "CPF", "Pet", "Espécie", "Raça", "Gênero", "Horário", "Data")
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
             self.tree.column(col, width=100)  # Defina a largura da coluna
         self.tree.grid(row=2, column=0, columnspan=6, sticky='nsew')  # Use sticky para preencher a célula
-        self.tree.bind("<Double-1>", self.on_item_double_click)
+        self.tree.bind("<Double-1>", self.edit_appointment)
 
         # Botões de ação
         edit_button = tk.Button(self.root, text="Editar", command=self.edit_appointment)
@@ -58,209 +106,130 @@ class ViewAppointmentsScreen:
         close_button.grid(row=3, column=2)
 
         # Botão de ação para gerar PDF
-        pdf_button = tk.Button(self.root, text="Gerar PDF", command=self.choose_destination_and_generate_pdf)
+        pdf_button = tk.Button(self.root, text="Gerar PDF", command=self.generate_pdf)
         pdf_button.grid(row=3, column=3)
 
-        backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.choose_backup_destination_and_backup)
+        # Botão de backup do banco de dados
+        backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.backup_database)
         backup_button.grid(row=3, column=4)
 
-    def search_appointments(self):
-        date = self.date_entry.get()
-        conn = sqlite3.connect('agendamentos.db')
+        # Carregar as datas disponíveis
+        self.populate_dates()
+
+    def populate_dates(self):
+        # Conecte-se ao banco de dados SQLite
+        conn = sqlite3.connect('clinic_database.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT id, tutor_name, cpf, pet_name, species, breed, gender, time FROM agendamentos WHERE date = ?', (date,))
-        appointments = cursor.fetchall()
+
+        # Obter datas únicas existentes no banco de dados
+        cursor.execute('SELECT DISTINCT appointment_date FROM agendamentos')
+        dates = cursor.fetchall()
+
+        # Converter as datas em uma lista de strings
+        date_options = [date[0] for date in dates]
+
+        # Configurar opções do Combobox
+        self.date_combobox["values"] = date_options
+
+        # Fechar a conexão com o banco de dados
         conn.close()
 
+    def populate_treeview(self, event=None):
+        # Obtenha a data selecionada do Combobox
+        selected_date = self.date_combobox.get()
+
+        # Conecte-se ao banco de dados SQLite
+        conn = sqlite3.connect('clinic_database.db')
+        cursor = conn.cursor()
+
+        # Busque os agendamentos para a data selecionada
+        cursor.execute('SELECT id, tutor_name, cpf, pet_name, species, breed, gender, time, appointment_date FROM agendamentos WHERE appointment_date = ?', (selected_date,))
+        appointments = cursor.fetchall()
+
+        # Limpe os itens existentes na árvore
         for record in self.tree.get_children():
             self.tree.delete(record)
 
+        # Preencha a árvore com os agendamentos recuperados
         for appointment in appointments:
             self.tree.insert("", "end", values=appointment)
 
-    def edit_appointment(self):
-        item = self.tree.selection()
-        if not item:
-            messagebox.showerror("Erro", "Selecione um agendamento para editar.")
-            return
-        appointment_id = self.tree.item(item, "values")[0]
-        if not appointment_id:
-            messagebox.showerror("Erro", "ID de agendamento inválido.")
-            return
-        edit_window = tk.Toplevel(self.root)
-        edit_window.title("Editar Agendamento")
-
-        # Defina o ícone da janela de edição
-        icon_path = "C:/Users/Ivo/Desktop/backup print2/print2/assets/dog.ico"  # Substitua pelo caminho real do ícone
-        edit_window.iconbitmap(icon_path)
-
-        # Aumentar o tamanho da janela de edição
-        edit_window.geometry("500x450")
-
-        conn = sqlite3.connect('agendamentos.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM agendamentos WHERE id = ?', (appointment_id,))
-        appointment = cursor.fetchone()
+        # Feche a conexão com o banco de dados
         conn.close()
 
-        # Crie e preencha os campos para edição de todas as informações
-        fields = ["Tutor", "CPF", "Endereço", "Telefone", "Pet", "Espécie", "Raça", "Genero", "Peso", "Idade", "Data", "Horário"]
-        entries = []
+    def edit_appointment(self, event=None):
+        # Verifique se um agendamento foi selecionado
+        if not self.tree.selection():
+            messagebox.showwarning("Editar Agendamento", "Por favor, selecione um agendamento para editar.")
+            return
 
-        for i, field in enumerate(fields):
-            label = tk.Label(edit_window, text=f"{field}:")
-            label.grid(row=i, column=0, padx=10, pady=5)
+        # Obtenha o item selecionado na árvore
+        item = self.tree.selection()[0]
+        # Obtenha os detalhes do agendamento selecionado
+        appointment_details = self.tree.item(item, "values")
 
-            entry = tk.Entry(edit_window, width=40)  # Ajuste a largura da coluna conforme necessário
-            entry.insert(0, appointment[i + 1])  # appointment[0] é o ID, por isso começamos de i+1
-            entry.grid(row=i, column=1, padx=10, pady=5)
-
-            entries.append(entry)
-
-        def update_appointment():
-            new_values = [entry.get() for entry in entries]
-
-            conn = sqlite3.connect('agendamentos.db')
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE agendamentos
-                SET tutor_name = ?,
-                    cpf = ?,
-                    address = ?,
-                    phone = ?,
-                    pet_name = ?,
-                    species = ?,
-                    breed = ?,
-                    gender = ?, 
-                    weight = ?,
-                    age = ?,
-                    date = ?,
-                    time = ?
-                WHERE id = ?
-            ''', (new_values + [appointment_id]))
-            conn.commit()
-            conn.close()
-
-            edit_window.destroy()
-            self.search_appointments()
-            
-            messagebox.showinfo("Editar agendamento", "Agendamento atualizado com sucesso!")
-
-        update_button = tk.Button(edit_window, text="Atualizar", command=update_appointment)
-        update_button.grid(row=len(fields), column=0, columnspan=2, pady=10)
-
-            # Botão de fechar
-        close_button = tk.Button(edit_window, text="Fechar", command=edit_window.destroy)
-        close_button.grid(row=len(fields), column=2, columnspan=2, pady=10)
+        # Abra uma janela de diálogo para editar o agendamento
+        EditAppointmentDialog(self.root, appointment_details)
 
     def delete_appointment(self):
-        item = self.tree.selection()
-        if not item:
-            messagebox.showerror("Erro", "Selecione um agendamento para excluir.")
+        # Verifique se um agendamento foi selecionado
+        if not self.tree.selection():
+            messagebox.showwarning("Excluir Agendamento", "Por favor, selecione um agendamento para excluir.")
             return
-        appointment_id = self.tree.item(item, "values")[0]
-        if not appointment_id:
-            messagebox.showerror("Erro", "ID de agendamento inválido.")
-            return
-        confirm = messagebox.askyesno("Confirmar Exclusão", "Tem certeza de que deseja excluir este agendamento?")
+
+        # Solicite confirmação do usuário antes de excluir o agendamento
+        confirm = messagebox.askyesno("Excluir Agendamento", "Tem certeza de que deseja excluir este agendamento?")
         if confirm:
-            conn = sqlite3.connect('agendamentos.db')
+            # Obtenha o item selecionado na árvore
+            item = self.tree.selection()[0]
+            # Obtenha o ID do agendamento selecionado
+            appointment_id = self.tree.item(item, "values")[0]
+
+            # Implemente a lógica para excluir o agendamento do banco de dados
+            conn = sqlite3.connect('clinic_database.db')
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM agendamentos WHERE id = ?', (appointment_id,))
-            conn.commit()
-            conn.close()
-            self.search_appointments()
+            try:
+                cursor.execute("DELETE FROM agendamentos WHERE id = ?", (appointment_id,))
+                conn.commit()
+                # Atualize a exibição removendo o agendamento excluído da árvore
+                self.tree.delete(item)
+                messagebox.showinfo("Excluir Agendamento", "Agendamento excluído com sucesso.")
+            except Exception as e:
+                conn.rollback()
+                messagebox.showerror("Erro", f"Erro ao excluir o agendamento: {e}")
+            finally:
+                conn.close()
 
-    def choose_backup_destination_and_backup(self):
-        # Abra uma caixa de diálogo para escolher a pasta de destino
-        backup_destination_folder = filedialog.askdirectory()
+    def generate_pdf(self):
+        # Obtém os dados da tabela
+        data = [self.tree.item(item, "values") for item in self.tree.get_children()]
+        # Gera o PDF
+        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if file_path:
+            c = canvas.Canvas(file_path, pagesize=letter)
+            width, height = letter
+            y = height - 50
+            for row in data:
+                x = 50
+                for item in row:
+                    c.drawString(x, y, str(item))
+                    x += 100
+                y -= 20
+            c.save()
+            messagebox.showinfo("PDF Gerado", "PDF gerado com sucesso!")
 
-        # Se o usuário cancelar a escolha da pasta, retorne
-        if not backup_destination_folder:
-            return
-
-        # Chame a função para backup do banco de dados passando a pasta de destino
-        self.backup_database(backup_destination_folder)
-
-    def backup_database(self, backup_destination_folder):
-        # Utilize a pasta de destino escolhida pelo usuário
-        backup_filename = os.path.join(backup_destination_folder, "agendamentos_backup.db")
-
-        # Restante do código para fazer o backup do banco de dados
-        try:
-            # Copie o arquivo do banco de dados para o local de backup
-            shutil.copy2('agendamentos.db', backup_filename)
-            messagebox.showinfo("Backup", "Backup do banco de dados realizado com sucesso!")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao fazer backup do banco de dados: {str(e)}")
-
-    def on_item_double_click(self, event):
-        self.edit_appointment()
-
-    def choose_destination_and_generate_pdf(self):
-        # Abra uma caixa de diálogo para escolher a pasta de destino
-        destination_folder = filedialog.askdirectory()
-
-        # Se o usuário cancelar a escolha da pasta, retorne
-        if not destination_folder:
-            return
-
-        # Chame a função para gerar o PDF passando a pasta de destino
-        self.generate_pdf(destination_folder)    
-
-    def generate_pdf(self, destination_folder):
-        date = self.date_entry.get()
-        conn = sqlite3.connect('agendamentos.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT * FROM agendamentos WHERE date = ?', (date,))
-        appointments = cursor.fetchall()
-        conn.close()
-
-        if not appointments:
-            messagebox.showinfo("Informação", "Nenhum agendamento encontrado para a data selecionada.")
-            return
-
-        # Formate a data para o nome do arquivo com barras
-        formatted_date = date.replace('-', '_')
-
-         # Utilize a pasta de destino escolhida pelo usuário
-        pdf_filename = os.path.join(destination_folder, f"agendamentos_{formatted_date}.pdf")
-
-        # Restante do código para gerar o PDF
-        pdf = canvas.Canvas(pdf_filename)
-
-        # Configuração do cabeçalho
-        pdf.setFont("Helvetica-Bold", 14)
-        pdf.drawString(50, 800, "Agendamentos do Dia")
-        pdf.setFont("Helvetica", 12)
-        pdf.drawString(50, 780, f"Data: {date}")
-
-        # Configuração da tabela
-        pdf.drawString(50, 750, "ID")
-        pdf.drawString(100, 750, "Tutor")
-        pdf.drawString(200, 750, "CPF")
-        pdf.drawString(300, 750, "Pet")
-        pdf.drawString(400, 750, "Espécie")
-        pdf.drawString(500, 750, "Raça")
-        pdf.drawString(600, 750, "Gênero")
-        pdf.drawString(700, 750, "Horário")
-
-        y_position = 730
-        for appointment in appointments:
-            y_position -= 20
-            pdf.drawString(50, y_position, str(appointment[0]))
-            pdf.drawString(100, y_position, appointment[1])
-            pdf.drawString(200, y_position, appointment[2])
-            pdf.drawString(300, y_position, appointment[5])
-            pdf.drawString(400, y_position, appointment[6])
-            pdf.drawString(500, y_position, appointment[7])
-            pdf.drawString(600, y_position, appointment[8])
-            pdf.drawString(700, y_position, appointment[11])
-
-        pdf.save()
-        messagebox.showinfo("Informação", f"PDF gerado com sucesso: {pdf_filename}")
+    def backup_database(self):
+        # Seleciona o local de destino para o backup do banco de dados
+        backup_dir = filedialog.askdirectory()
+        if backup_dir:
+            # Copia o banco de dados para o diretório de backup
+            try:
+                shutil.copy("clinic_database.db", os.path.join(backup_dir, "clinic_database_backup.db"))
+                messagebox.showinfo("Backup Concluído", "Backup do banco de dados realizado com sucesso!")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao fazer o backup do banco de dados: {e}")
 
 if __name__ == "__main__":
     root = tk.Tk()
     app = ViewAppointmentsScreen(root)
-    root.mainloop()    
+    root.mainloop()
