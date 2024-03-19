@@ -1,10 +1,10 @@
+import os
+import tempfile
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import sqlite3
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
 import shutil
-import os
+
 
 class EditAppointmentDialog:
     def __init__(self, parent, appointment_details):
@@ -19,7 +19,7 @@ class EditAppointmentDialog:
 
     def create_widgets(self):
         # Labels e campos de entrada para os detalhes do agendamento
-        labels = ["ID", "Tutor", "CPF", "Pet", "Espécie", "Raça", "Gênero", "Horário", "Data"]
+        labels = ["Tutor", "Endereço", "Telefone", "Pet", "Espécie", "Raça", "Gênero", "Peso Estimado", "Idade", "Doença do Pet", "Localização", "Horário", "Tipo de Atendimento", "Veterinário", "Data"]
         self.entries = {}
 
         for i, label in enumerate(labels):
@@ -50,7 +50,7 @@ class EditAppointmentDialog:
 
         try:
             # Executa a consulta SQL para atualizar os detalhes do agendamento
-            cursor.execute("UPDATE agendamentos SET tutor_name=?, cpf=?, pet_name=?, species=?, breed=?, gender=?, time=?, appointment_date=? WHERE id=?", (*new_details[1:], self.appointment_details[0]))
+            cursor.execute("UPDATE agendamentos SET tutor_name=?, address=?, phone=?, pet_name=?, species=?, breed=?, gender=?, weight=?, age=?, pet_disease=?, location=?, time=?, service=?, vet=?, appointment_date=? WHERE id=?", (*new_details, self.appointment_details[-1]))
             conn.commit()
             messagebox.showinfo("Editar Agendamento", "Agendamento editado com sucesso.")
             # Atualize a exibição dos agendamentos na tela principal, se necessário
@@ -66,7 +66,7 @@ class ViewAppointmentsScreen:
     def __init__(self, root):
         self.root = root
         self.root.title("Visualizar Agendamentos por Tutor")
-        self.root.geometry("800x400")
+        self.root.geometry("1400x500")
 
         # Defina o ícone da janela
         icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"
@@ -87,7 +87,7 @@ class ViewAppointmentsScreen:
         self.date_combobox.bind("<<ComboboxSelected>>", self.populate_treeview)
 
         # Tabela de agendamentos
-        columns = ("ID", "Tutor", "CPF", "Pet", "Espécie", "Raça", "Gênero", "Horário", "Data")
+        columns = ("Tutor", "Endereço", "Telefone", "Pet", "Espécie", "Raça", "Gênero", "Peso Estimado", "Idade", "Doença do Pet", "Localização", "Horário", "Tipo de Atendimento", "Veterinário", "Data")
         self.tree = ttk.Treeview(self.root, columns=columns, show="headings")
         for col in columns:
             self.tree.heading(col, text=col)
@@ -105,13 +105,13 @@ class ViewAppointmentsScreen:
         close_button = tk.Button(self.root, text="Fechar", command=self.root.destroy)
         close_button.grid(row=3, column=2)
 
-        # Botão de ação para gerar PDF
-        pdf_button = tk.Button(self.root, text="Gerar PDF", command=self.generate_pdf)
-        pdf_button.grid(row=3, column=3)
-
         # Botão de backup do banco de dados
         backup_button = tk.Button(self.root, text="Backup do Banco de Dados", command=self.backup_database)
-        backup_button.grid(row=3, column=4)
+        backup_button.grid(row=3, column=3)
+
+        # Botão de ação para imprimir os agendamentos
+        print_button = tk.Button(self.root, text="Imprimir", command=self.print_appointments)
+        print_button.grid(row=3, column=4)
 
         # Carregar as datas disponíveis
         self.populate_dates()
@@ -143,7 +143,7 @@ class ViewAppointmentsScreen:
         cursor = conn.cursor()
 
         # Busque os agendamentos para a data selecionada
-        cursor.execute('SELECT id, tutor_name, cpf, pet_name, species, breed, gender, time, appointment_date FROM agendamentos WHERE appointment_date = ?', (selected_date,))
+        cursor.execute('SELECT tutor_name, address, phone, pet_name, species, breed, gender, weight, age, pet_disease, location, time, service, vet, appointment_date FROM agendamentos WHERE appointment_date = ?', (selected_date,))
         appointments = cursor.fetchall()
 
         # Limpe os itens existentes na árvore
@@ -158,78 +158,97 @@ class ViewAppointmentsScreen:
         conn.close()
 
     def edit_appointment(self, event=None):
-        # Verifique se um agendamento foi selecionado
-        if not self.tree.selection():
-            messagebox.showwarning("Editar Agendamento", "Por favor, selecione um agendamento para editar.")
-            return
+        # Obter o item selecionado na árvore
+        selected_item = self.tree.selection()
 
-        # Obtenha o item selecionado na árvore
-        item = self.tree.selection()[0]
-        # Obtenha os detalhes do agendamento selecionado
-        appointment_details = self.tree.item(item, "values")
+        if selected_item:
+            # Obter os detalhes do agendamento selecionado
+            item_details = self.tree.item(selected_item)['values']
 
-        # Abra uma janela de diálogo para editar o agendamento
-        EditAppointmentDialog(self.root, appointment_details)
+            # Abrir a janela de diálogo para editar o agendamento
+            EditAppointmentDialog(self.root, item_details)
+        else:
+            messagebox.showwarning("Editar Agendamento", "Selecione um agendamento para editar.")
 
     def delete_appointment(self):
-        # Verifique se um agendamento foi selecionado
-        if not self.tree.selection():
-            messagebox.showwarning("Excluir Agendamento", "Por favor, selecione um agendamento para excluir.")
-            return
+        # Obter o item selecionado na árvore
+        selected_item = self.tree.selection()
 
-        # Solicite confirmação do usuário antes de excluir o agendamento
-        confirm = messagebox.askyesno("Excluir Agendamento", "Tem certeza de que deseja excluir este agendamento?")
-        if confirm:
-            # Obtenha o item selecionado na árvore
-            item = self.tree.selection()[0]
-            # Obtenha o ID do agendamento selecionado
-            appointment_id = self.tree.item(item, "values")[0]
+        if selected_item:
+            # Confirmar a exclusão do agendamento
+            if messagebox.askyesno("Excluir Agendamento", "Tem certeza de que deseja excluir este agendamento?"):
+                # Obter o ID do agendamento selecionado
+                appointment_id = self.tree.item(selected_item)['values'][-1]
 
-            # Implemente a lógica para excluir o agendamento do banco de dados
-            conn = sqlite3.connect('clinic_database.db')
-            cursor = conn.cursor()
-            try:
-                cursor.execute("DELETE FROM agendamentos WHERE id = ?", (appointment_id,))
-                conn.commit()
-                # Atualize a exibição removendo o agendamento excluído da árvore
-                self.tree.delete(item)
-                messagebox.showinfo("Excluir Agendamento", "Agendamento excluído com sucesso.")
-            except Exception as e:
-                conn.rollback()
-                messagebox.showerror("Erro", f"Erro ao excluir o agendamento: {e}")
-            finally:
-                conn.close()
+                # Conectar-se ao banco de dados SQLite
+                conn = sqlite3.connect('clinic_database.db')
+                cursor = conn.cursor()
 
-    def generate_pdf(self):
-        # Obtém os dados da tabela
-        data = [self.tree.item(item, "values") for item in self.tree.get_children()]
-        # Gera o PDF
-        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
-        if file_path:
-            c = canvas.Canvas(file_path, pagesize=letter)
-            width, height = letter
-            y = height - 50
-            for row in data:
-                x = 50
-                for item in row:
-                    c.drawString(x, y, str(item))
-                    x += 100
-                y -= 20
-            c.save()
-            messagebox.showinfo("PDF Gerado", "PDF gerado com sucesso!")
+                try:
+                    # Executar a consulta SQL para excluir o agendamento
+                    cursor.execute("DELETE FROM agendamentos WHERE id = ?", (appointment_id,))
+                    conn.commit()
+                    messagebox.showinfo("Excluir Agendamento", "Agendamento excluído com sucesso.")
+                    # Atualize a exibição dos agendamentos na tela principal, se necessário
+                    # Por exemplo, você pode chamar self.populate_treeview() da tela principal aqui
+                except Exception as e:
+                    conn.rollback()
+                    messagebox.showerror("Erro", f"Erro ao excluir o agendamento: {e}")
+                finally:
+                    # Feche a conexão com o banco de dados
+                    conn.close()
+
+                # Remover o agendamento da árvore
+                self.tree.delete(selected_item)
+        else:
+            messagebox.showwarning("Excluir Agendamento", "Selecione um agendamento para excluir.")
+
 
     def backup_database(self):
-        # Seleciona o local de destino para o backup do banco de dados
-        backup_dir = filedialog.askdirectory()
-        if backup_dir:
-            # Copia o banco de dados para o diretório de backup
-            try:
-                shutil.copy("clinic_database.db", os.path.join(backup_dir, "clinic_database_backup.db"))
-                messagebox.showinfo("Backup Concluído", "Backup do banco de dados realizado com sucesso!")
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao fazer o backup do banco de dados: {e}")
+        # Selecionar o local do arquivo de backup
+        backup_file = filedialog.asksaveasfilename(defaultextension=".dbbackup")
 
-if __name__ == "__main__":
+        if backup_file:
+            try:
+                # Copiar o banco de dados SQLite para o arquivo de backup
+                shutil.copyfile("clinic_database.db", backup_file)
+                messagebox.showinfo("Backup do Banco de Dados", "Backup do banco de dados concluído com sucesso.")
+            except Exception as e:
+                messagebox.showerror("Erro", f"Erro ao fazer backup do banco de dados: {e}")
+
+    def print_appointments(self):
+        # Obter todos os agendamentos da árvore
+        all_appointments = self.tree.get_children()
+
+        # Criar uma string formatada com os detalhes dos agendamentos
+        appointments_text = ""
+        for appointment_id in all_appointments:
+            appointment_details = self.tree.item(appointment_id)['values']
+            appointments_text += "Agendamento:\n"
+            appointments_text += f"Tutor: {appointment_details[0]}\n"
+            appointments_text += f"Telefone: {appointment_details[2]}\n"
+            appointments_text += f"Espécie: {appointment_details[4]}\n"
+            appointments_text += f"Gênero: {appointment_details[6]}\n"
+            appointments_text += f"Doença do Pet: {appointment_details[9]}\n"
+            appointments_text += f"Localização: {appointment_details[10]}\n"
+            appointments_text += f"Horário: {appointment_details[11]}\n"
+            appointments_text += f"Veterinário: {appointment_details[13]}\n\n"
+
+        # Criar um arquivo temporário para salvar os detalhes dos agendamentos
+        temp_file = tempfile.mktemp(".txt")
+
+        # Escrever os detalhes dos agendamentos no arquivo temporário
+        with open(temp_file, "w") as file:
+            file.write(appointments_text)
+
+        # Abrir o arquivo temporário para impressão
+        os.startfile(temp_file, "print")
+
+
+def main():
     root = tk.Tk()
     app = ViewAppointmentsScreen(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()

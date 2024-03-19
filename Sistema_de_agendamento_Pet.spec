@@ -34,5 +34,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['C:\\Users\\Ivo\\Desktop\\backup print2\\print2\\assets\\icone3.png'],
+    icon=['C:\\Users\\Ivo\\Desktop\\Projetos Prontos pra uso\\Projeto Clinica movelpet\\assets\\icone3.png'],
 )
