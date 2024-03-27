@@ -9,7 +9,7 @@ class AppointmentScreen:
         self.root.geometry("650x500")
 
         # Defina o ícone da janela
-        icon_path = "assets/dog.ico"
+        icon_path = "./assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         # Adicionar fundo branco

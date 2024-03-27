@@ -17,7 +17,7 @@ class ViewDonationsScreen:
         self.view_screen_instance = self
        
        # Defina o ícone da janela
-        icon_path = "assets/dog.ico"  # Substitua pelo caminho real do ícone
+        icon_path = "./assets/dog.ico"  # Substitua pelo caminho real do ícone
         self.root.iconbitmap(icon_path)
 
 

@@ -1,4 +1,3 @@
-import sys
 import os
 import tkinter as tk
 from PIL import Image, ImageTk
@@ -29,6 +28,7 @@ def get_image_path(filename):
 
 # Caminho das imagens de ícones
 icone_path = get_image_path("icone.png")
+
 icone4_path = get_image_path("icone4.png")
 icone2_path = get_image_path("icone2.png")
 icone7_path = get_image_path("icone7.png")

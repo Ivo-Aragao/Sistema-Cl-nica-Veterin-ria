@@ -1,3 +1,4 @@
+import sys
 import os
 import tempfile
 import tkinter as tk
@@ -14,6 +15,9 @@ class EditAppointmentDialog:
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Editar Agendamento")
         self.dialog.grab_set()
+
+        icon_path = "./assets/dog.ico"
+        self.dialog.iconbitmap(icon_path)
 
         self.create_widgets()
 
@@ -69,7 +73,7 @@ class ViewAppointmentsScreen:
         self.root.geometry("1400x500")
 
         # Defina o ícone da janela
-        icon_path = "assets/dog.ico"
+        icon_path = "./assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         self.create_widgets()
