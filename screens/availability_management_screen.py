@@ -10,6 +10,9 @@ class AvailabilityManagementScreen:
         self.root.title("Gerenciamento de Disponibilidade")
         self.root.geometry("600x650")  # Aumentei a altura para acomodar o novo campo
 
+        icon_path = "assets/dog.ico"  # Substitua pelo caminho real do ícone
+        self.root.iconbitmap(icon_path)
+        
         # Conexão com o banco de dados SQLite
         self.connection = sqlite3.connect('clinic_database.db')
         self.cursor = self.connection.cursor()

@@ -9,7 +9,7 @@ class AppointmentScreen:
         self.root.geometry("650x500")
 
         # Defina o ícone da janela
-        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"
+        icon_path = "assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         # Adicionar fundo branco
@@ -114,6 +114,18 @@ class AppointmentScreen:
         self.pet_disease_entry = tk.Entry(self.root)
         self.pet_disease_entry.grid(row=11, column=col1+1)
 
+        # Opções de agendamento
+        self.time_var = tk.StringVar(self.root)
+        self.time_var.set("Selecione o Horário")
+        self.location_var = tk.StringVar(self.root)
+        self.location_var.set("Selecione o local")
+        self.date_var = tk.StringVar(self.root)
+        self.date_var.set("Selecione uma data")
+        self.type_var = tk.StringVar(self.root)
+        self.type_var.set("Selecione o Tipo de Atendimento")
+        self.vet_var = tk.StringVar(self.root)
+        self.vet_var.set("Selecione o Veterinário")
+
         # Local de Atendimento
         location_label = tk.Label(self.root, text="Local de Atendimento:", bg="white", bd=1)
         location_label.grid(row=1, column=2)
@@ -127,14 +139,6 @@ class AppointmentScreen:
         self.date_dropdown = tk.OptionMenu(self.root, self.date_var, "Selecione uma Data", command=self.update_appointment_options)
         self.date_dropdown.config(bg="white", bd=1)
         self.date_dropdown.grid(row=2, column=3, pady=10)
-
-        # Opções de agendamento
-        self.time_var = tk.StringVar(self.root)
-        self.time_var.set("Selecione o Horário")
-        self.type_var = tk.StringVar(self.root)
-        self.type_var.set("Selecione o Tipo de Atendimento")
-        self.vet_var = tk.StringVar(self.root)
-        self.vet_var.set("Selecione o Veterinário")
 
         self.time_label = tk.Label(self.root, text="Horário:", bg="white", bd=1)
         self.time_label.grid(row=3, column=2)

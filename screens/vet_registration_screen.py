@@ -8,6 +8,9 @@ class VetRegistrationScreen:
         self.root.title("Cadastro de Veterinários")
         self.root.geometry("400x450")
 
+        icon_path = "assets/dog.ico"  # Substitua pelo caminho real do ícone
+        self.root.iconbitmap(icon_path)
+        
         # Título
         title_label = tk.Label(self.root, text="Cadastro de Veterinários", font=('Arial', 16, 'bold'))
         title_label.pack(pady=20)

@@ -17,7 +17,7 @@ class ViewDonationsScreen:
         self.view_screen_instance = self
        
        # Defina o ícone da janela
-        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"  # Substitua pelo caminho real do ícone
+        icon_path = "assets/dog.ico"  # Substitua pelo caminho real do ícone
         self.root.iconbitmap(icon_path)
 
 
@@ -256,7 +256,7 @@ class EditDonationScreen:
         self.load_donation_details()
 
          # Defina o ícone da janela de edição
-        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"  # Substitua pelo caminho real do ícone
+        icon_path = "assets/dog.ico"  # Substitua pelo caminho real do ícone
         self.root.iconbitmap(icon_path)
 
     def show(self):

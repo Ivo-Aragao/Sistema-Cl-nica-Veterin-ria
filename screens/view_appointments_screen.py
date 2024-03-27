@@ -69,7 +69,7 @@ class ViewAppointmentsScreen:
         self.root.geometry("1400x500")
 
         # Defina o ícone da janela
-        icon_path = "C:/Users/Ivo/Desktop/Projetos Prontos pra uso/Projeto Clinica movelpet/assets/dog.ico"
+        icon_path = "assets/dog.ico"
         self.root.iconbitmap(icon_path)
 
         self.create_widgets()
